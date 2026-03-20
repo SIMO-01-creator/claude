@@ -25,6 +25,9 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 from api import api as api_blueprint  # noqa: E402
 app.register_blueprint(api_blueprint)
 
+# Initialize DB at startup (works with both `python app.py` and gunicorn)
+init_database()
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Veuillez vous connecter.'
@@ -1450,5 +1453,4 @@ def labo_rapports(labo_id):
 # ═════════════════════════════════════════════════════════════════════════════
 
 if __name__ == '__main__':
-    init_database()
     app.run(debug=True, host='0.0.0.0', port=5000)

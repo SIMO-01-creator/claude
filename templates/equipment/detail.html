@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block title %}{{ equip.nom }}{% endblock %}
+{% block page_title %}Équipement — {{ equip.nom }}{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Equipment info card -->
+  <div class="col-12 col-md-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-tools me-2"></i>Fiche équipement</span>
+        <span class="badge {{ 'bg-success' if equip.statut == 'Opérationnel' else 'bg-warning text-dark' }}">
+          {{ equip.statut }}
+        </span>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5 text-muted small">Code</dt>
+          <dd class="col-7"><code>{{ equip.code_equipement }}</code></dd>
+
+          <dt class="col-5 text-muted small">Nom</dt>
+          <dd class="col-7 fw-semibold">{{ equip.nom }}</dd>
+
+          <dt class="col-5 text-muted small">Marque</dt>
+          <dd class="col-7">{{ equip.marque or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Modèle</dt>
+          <dd class="col-7">{{ equip.modele or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">N° série</dt>
+          <dd class="col-7">{{ equip.numero_serie or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Laboratoire</dt>
+          <dd class="col-7">{{ LABOS.get(equip.labo_id, equip.labo_id) }}</dd>
+
+          <dt class="col-5 text-muted small">Mise en service</dt>
+          <dd class="col-7">{{ equip.date_mise_en_service or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Prochaine vérif.</dt>
+          <dd class="col-7">{{ equip.prochaine_verification or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Prochain étalonnage</dt>
+          <dd class="col-7">
+            <strong class="{{ 'text-danger' if equip.prochaine_etalonnage and equip.prochaine_etalonnage < '2999' else '' }}">
+              {{ equip.prochaine_etalonnage or '—' }}
+            </strong>
+          </dd>
+
+          {% if equip.notes %}
+          <dt class="col-5 text-muted small">Notes</dt>
+          <dd class="col-7 small">{{ equip.notes }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calibration form + history -->
+  <div class="col-12 col-md-7">
+    {% if current_user.perm('manage_equipments') or current_user.perm('all') %}
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Enregistrer un étalonnage</div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('equipment_calibrate', eid=equip.id) }}">
+          <div class="row g-2">
+            <div class="col-md-4">
+              <label class="form-label small">Date <span class="text-danger">*</span></label>
+              <input type="date" name="date_etalonnage" class="form-control form-control-sm" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small">Type</label>
+              <select name="type_operation" class="form-select form-select-sm">
+                <option value="Étalonnage">Étalonnage</option>
+                <option value="Vérification">Vérification</option>
+                <option value="Maintenance">Maintenance</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small">Prochain étalonnage</label>
+              <input type="date" name="prochain_etalonnage" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small">Résultat</label>
+              <input type="text" name="resultat" class="form-control form-control-sm"
+                     placeholder="Ex: Conforme à ±0.01">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Réf. certificat</label>
+              <input type="text" name="certificat_ref" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3 d-flex align-items-end pb-1">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="conforme"
+                       id="conforme" checked>
+                <label class="form-check-label small" for="conforme">Conforme</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label small">Notes</label>
+              <textarea name="notes" class="form-control form-control-sm" rows="1"></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary mt-2">
+            <i class="bi bi-check me-1"></i>Enregistrer
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-clock-history me-2"></i>Historique étalonnages ({{ calibrations|length }})
+      </div>
+      <div class="card-body p-0">
+        {% if calibrations %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Résultat</th>
+                <th>Conforme</th>
+                <th>Opérateur</th>
+                <th>Réf.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in calibrations %}
+              <tr>
+                <td class="small fw-semibold">{{ c.date_etalonnage }}</td>
+                <td class="small">{{ c.type_operation }}</td>
+                <td class="small">{{ c.resultat or '—' }}</td>
+                <td>
+                  {% if c.conforme %}
+                    <span class="badge bg-success-subtle text-success">Oui</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger">Non</span>
+                  {% endif %}
+                </td>
+                <td class="small text-muted">{{ c.operateur_nom or '—' }}</td>
+                <td class="small text-muted">{{ c.certificat_ref or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">Aucun étalonnage enregistré</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ url_for('equipment_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+  </a>
+</div>
+{% endblock %}

@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% block title %}{{ ncr.numero_ncr }}{% endblock %}
+{% block page_title %}NCR — {{ ncr.numero_ncr }}{% endblock %}
+
+{% block content %}
+<!-- Header bar -->
+<div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+  <div class="d-flex align-items-center gap-2 flex-wrap">
+    <span class="badge badge-gravite-{{ ncr.gravite }} fs-6">{{ ncr.gravite }}</span>
+    <span class="badge badge-statut-{{ ncr.statut }} fs-6">{{ ncr.statut }}</span>
+    {% if ncr.lot_bloque %}
+    <span class="badge bg-danger">🔒 Lot bloqué</span>
+    {% endif %}
+  </div>
+  {% if ncr.statut == 'Ouverte' and (current_user.perm('open_ncr') or current_user.perm('all')) %}
+  <form method="post" action="{{ url_for('ncr_close', ncr_id=ncr.id) }}"
+        onsubmit="return confirm('Clôturer cette NCR ?')">
+    <button type="submit" class="btn btn-success btn-sm">
+      <i class="bi bi-check-circle me-1"></i>Clôturer la NCR
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <!-- NCR details -->
+  <div class="col-12 col-md-5">
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-info-circle me-2"></i>Détails</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5 text-muted small">N° NCR</dt>
+          <dd class="col-7 fw-bold">{{ ncr.numero_ncr }}</dd>
+
+          <dt class="col-5 text-muted small">Laboratoire</dt>
+          <dd class="col-7">{{ LABOS.get(ncr.labo_id, ncr.labo_id) }}</dd>
+
+          <dt class="col-5 text-muted small">Échantillon</dt>
+          <dd class="col-7">{{ ncr.code_echantillon or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Ouvert par</dt>
+          <dd class="col-7">{{ ncr.ouvert_par_nom or '—' }}</dd>
+
+          <dt class="col-5 text-muted small">Date ouverture</dt>
+          <dd class="col-7">{{ ncr.date_ouverture[:10] if ncr.date_ouverture else '—' }}</dd>
+
+          {% if ncr.date_cloture %}
+          <dt class="col-5 text-muted small">Clôturé le</dt>
+          <dd class="col-7">{{ ncr.date_cloture }}</dd>
+          <dt class="col-5 text-muted small">Clôturé par</dt>
+          <dd class="col-7">{{ ncr.clos_par_nom or '—' }}</dd>
+          {% endif %}
+        </dl>
+        <hr class="my-2">
+        <p class="mb-0 small">{{ ncr.description }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-7">
+    <!-- Causes -->
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-search me-2"></i>Analyse des causes ({{ causes|length }})</span>
+      </div>
+      <div class="card-body p-0">
+        {% if causes %}
+        {% for c in causes %}
+        <div class="p-3 border-bottom">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="badge bg-secondary">{{ c.categorie or 'Sans catégorie' }}</span>
+            <small class="text-muted">{{ c.auteur_nom }} — {{ c.date_saisie[:10] if c.date_saisie else '' }}</small>
+          </div>
+          <p class="mb-1 small">{{ c.description }}</p>
+          {% if c.analyse_5m %}
+          <p class="mb-0 text-muted small fst-italic">5M: {{ c.analyse_5m }}</p>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-3 text-muted small">Aucune cause enregistrée</div>
+        {% endif %}
+
+        {% if ncr.statut == 'Ouverte' %}
+        <div class="p-3 bg-light">
+          <form method="post" action="{{ url_for('ncr_add_cause', ncr_id=ncr.id) }}">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <select name="categorie" class="form-select form-select-sm">
+                  <option value="">Catégorie 5M</option>
+                  <option value="Matière">Matière</option>
+                  <option value="Méthode">Méthode</option>
+                  <option value="Milieu">Milieu</option>
+                  <option value="Matériel">Matériel</option>
+                  <option value="Main d'œuvre">Main d'œuvre</option>
+                </select>
+              </div>
+              <div class="col-md-8">
+                <input type="text" name="description" class="form-control form-control-sm"
+                       placeholder="Description de la cause..." required>
+              </div>
+              <div class="col-12">
+                <input type="text" name="analyse_5m" class="form-control form-control-sm"
+                       placeholder="Analyse 5M / 5 Pourquoi (optionnel)">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline-primary mt-2">
+              <i class="bi bi-plus me-1"></i>Ajouter une cause
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Actions correctives -->
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-check2-square me-2"></i>Actions correctives ({{ actions|length }})
+      </div>
+      <div class="card-body p-0">
+        {% if actions %}
+        {% for a in actions %}
+        <div class="p-3 border-bottom">
+          <div class="d-flex justify-content-between align-items-start mb-1">
+            <div>
+              <span class="badge bg-info-subtle text-info me-1">{{ a.type_action }}</span>
+              <span class="badge
+                {% if a.statut == 'Réalisée' %}bg-success-subtle text-success
+                {% elif a.statut == 'En cours' %}bg-primary-subtle text-primary
+                {% else %}bg-warning-subtle text-warning{% endif %}">
+                {{ a.statut }}
+              </span>
+            </div>
+            <small class="text-muted">Échéance: {{ a.date_echeance or '—' }}</small>
+          </div>
+          <p class="mb-1 small">{{ a.description }}</p>
+          <small class="text-muted">Resp.: {{ a.responsable_nom or '—' }}</small>
+          {% if a.statut != 'Réalisée' and ncr.statut == 'Ouverte' %}
+          <form method="post"
+                action="{{ url_for('ncr_action_done', ncr_id=ncr.id, act_id=a.id) }}"
+                class="d-inline ms-2">
+            <button type="submit" class="btn btn-xs btn-outline-success btn-sm py-0 px-2">
+              <i class="bi bi-check"></i> Fait
+            </button>
+          </form>
+          {% endif %}
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="text-center py-3 text-muted small">Aucune action enregistrée</div>
+        {% endif %}
+
+        {% if ncr.statut == 'Ouverte' %}
+        <div class="p-3 bg-light">
+          <form method="post" action="{{ url_for('ncr_add_action', ncr_id=ncr.id) }}">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <select name="type_action" class="form-select form-select-sm">
+                  <option value="Corrective">Corrective</option>
+                  <option value="Préventive">Préventive</option>
+                  <option value="Correction immédiate">Correction immédiate</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <select name="responsable_id" class="form-select form-select-sm">
+                  <option value="">Responsable...</option>
+                  {% for u in users %}
+                  <option value="{{ u.id }}">{{ u.nom }} {{ u.prenom }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <input type="date" name="date_echeance" class="form-control form-control-sm">
+              </div>
+              <div class="col-12">
+                <input type="text" name="description" class="form-control form-control-sm"
+                       placeholder="Description de l'action..." required>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline-primary mt-2">
+              <i class="bi bi-plus me-1"></i>Ajouter une action
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ url_for('ncr_list') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+  </a>
+</div>
+{% endblock %}

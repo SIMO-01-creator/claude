@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% block title %}Onboarding / RH{% endblock %}
+{% block page_title %}Onboarding & Compétences personnel{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Formations -->
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-journal-bookmark me-2"></i>Formations ({{ formations|length }})</span>
+        {% if current_user.perm('admin') or current_user.perm('all') %}
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#modalFormation">
+          <i class="bi bi-plus me-1"></i>Nouvelle
+        </button>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        {% if formations %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Titre</th>
+                <th>Type</th>
+                <th>Durée</th>
+                <th>Validité</th>
+                <th>Oblig.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for f in formations %}
+              <tr>
+                <td class="fw-semibold small">{{ f.titre }}</td>
+                <td class="small text-muted">{{ f.type_formation or '—' }}</td>
+                <td class="small">{{ f.duree_heures or '—' }}h</td>
+                <td class="small">{{ f.validite_mois or '—' }} mois</td>
+                <td>
+                  {% if f.obligatoire %}
+                  <span class="badge bg-danger-subtle text-danger">Oui</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">Aucune formation définie</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Competency matrix -->
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-award me-2"></i>Compétences ({{ competences|length }})</span>
+        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                data-bs-target="#modalCompetence">
+          <i class="bi bi-plus me-1"></i>Enregistrer
+        </button>
+      </div>
+      <div class="card-body p-0">
+        {% if competences %}
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Personnel</th>
+                <th>Formation</th>
+                <th>Date</th>
+                <th>Expiration</th>
+                <th>Statut</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in competences %}
+              <tr>
+                <td class="fw-semibold small">{{ c.personnel_nom }}</td>
+                <td class="small">{{ c.formation_titre }}</td>
+                <td class="small text-muted">{{ c.date_formation }}</td>
+                <td class="small {{ 'text-danger' if c.statut == 'Expirée' else '' }}">
+                  {{ c.date_expiration or '—' }}
+                </td>
+                <td>
+                  <span class="badge badge-statut-{{ c.statut }}">{{ c.statut }}</span>
+                </td>
+                <td class="small">{{ c.score or '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted small">Aucune compétence enregistrée</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nouvelle formation -->
+{% if current_user.perm('admin') or current_user.perm('all') %}
+<div class="modal fade" id="modalFormation" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('onboarding_new_formation') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Nouvelle formation</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Titre <span class="text-danger">*</span></label>
+              <input type="text" name="titre" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Type</label>
+              <select name="type_formation" class="form-select">
+                <option value="Interne">Interne</option>
+                <option value="Externe">Externe</option>
+                <option value="E-learning">E-learning</option>
+                <option value="Réglementaire">Réglementaire</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Durée (h)</label>
+              <input type="number" step="0.5" name="duree_heures" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Validité (mois)</label>
+              <input type="number" name="validite_mois" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="2"></textarea>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="obligatoire"
+                       id="f-obligatoire" checked>
+                <label class="form-check-label" for="f-obligatoire">Formation obligatoire</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Modal: Enregistrer une compétence -->
+<div class="modal fade" id="modalCompetence" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('onboarding_new_competence') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Enregistrer une compétence</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Personnel <span class="text-danger">*</span></label>
+              <select name="user_id" class="form-select" required>
+                <option value="">— Choisir —</option>
+                {% for u in users %}
+                <option value="{{ u.id }}">{{ u.nom }} {{ u.prenom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Formation <span class="text-danger">*</span></label>
+              <select name="formation_id" class="form-select" required>
+                <option value="">— Choisir —</option>
+                {% for f in formations %}
+                <option value="{{ f.id }}">{{ f.titre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de formation <span class="text-danger">*</span></label>
+              <input type="date" name="date_formation" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Résultat</label>
+              <select name="resultat" class="form-select">
+                <option value="Réussi">Réussi</option>
+                <option value="Échoué">Échoué</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Score (%)</label>
+              <input type="number" min="0" max="100" name="score" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Formateur</label>
+              <input type="text" name="formateur" class="form-control">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block title %}Non-conformités{% endblock %}
+{% block page_title %}Non-conformités (NCR){% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge bg-danger-subtle text-danger py-2 px-3">
+      Ouvertes: {{ ncrs|selectattr('statut', 'equalto', 'Ouverte')|list|length }}
+    </span>
+    <span class="badge bg-success-subtle text-success py-2 px-3">
+      Clôturées: {{ ncrs|selectattr('statut', 'equalto', 'Clôturée')|list|length }}
+    </span>
+  </div>
+  {% if current_user.perm('open_ncr') or current_user.perm('all') %}
+  <a href="{{ url_for('ncr_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-2"></i>Ouvrir une NCR
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-exclamation-triangle me-2"></i>Toutes les non-conformités ({{ ncrs|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>N° NCR</th>
+            <th>Gravité</th>
+            <th>Statut</th>
+            <th>Labo</th>
+            <th>Échantillon</th>
+            <th>Description</th>
+            <th>Ouvert par</th>
+            <th>Date ouverture</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for n in ncrs %}
+          <tr>
+            <td class="fw-semibold">
+              <a href="{{ url_for('ncr_detail', ncr_id=n.id) }}" class="text-decoration-none">
+                {{ n.numero_ncr }}
+              </a>
+              {% if n.lot_bloque %}
+              <span class="badge bg-danger ms-1" title="Lot bloqué">🔒</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge badge-gravite-{{ n.gravite }}">{{ n.gravite }}</span>
+            </td>
+            <td>
+              <span class="badge badge-statut-{{ n.statut }}">{{ n.statut }}</span>
+            </td>
+            <td class="small text-muted">{{ LABOS.get(n.labo_id, n.labo_id) }}</td>
+            <td class="small text-muted">{{ n.code_echantillon or '—' }}</td>
+            <td class="small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              {{ n.description }}
+            </td>
+            <td class="small text-muted">{{ n.ouvert_par_nom or '—' }}</td>
+            <td class="small text-muted">{{ n.date_ouverture[:10] if n.date_ouverture else '—' }}</td>
+            <td>
+              <a href="{{ url_for('ncr_detail', ncr_id=n.id) }}"
+                 class="btn btn-sm btn-outline-primary py-0 px-2">
+                <i class="bi bi-arrow-right"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not ncrs %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-check-circle fs-1 d-block mb-2 text-success"></i>
+      Aucune non-conformité enregistrée
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

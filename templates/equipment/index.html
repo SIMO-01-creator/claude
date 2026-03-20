@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Équipements{% endblock %}
+{% block page_title %}Équipements & Étalonnages{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  {% if current_user.perm('manage_equipments') or current_user.perm('all') %}
+  <a href="{{ url_for('equipment_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-2"></i>Nouvel équipement
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-tools me-2"></i>Parc équipements ({{ equip|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Nom</th>
+            <th>Marque / Modèle</th>
+            <th>Labo</th>
+            <th>Statut</th>
+            <th>Prochain étalonnage</th>
+            <th>Étalonnage</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in equip %}
+          <tr>
+            <td><code class="small">{{ e.code_equipement }}</code></td>
+            <td class="fw-semibold">{{ e.nom }}</td>
+            <td class="small text-muted">{{ e.marque or '' }}{% if e.marque and e.modele %} — {% endif %}{{ e.modele or '' }}</td>
+            <td class="small">{{ LABOS.get(e.labo_id, e.labo_id) }}</td>
+            <td>
+              <span class="badge {{ 'bg-success' if e.statut == 'Opérationnel' else 'bg-warning text-dark' }}">
+                {{ e.statut }}
+              </span>
+            </td>
+            <td class="small">{{ e.prochaine_etalonnage or '—' }}</td>
+            <td>
+              <span class="badge badge-cal-{{ e.cal_statut }}">{{ e.cal_statut }}</span>
+            </td>
+            <td>
+              <a href="{{ url_for('equipment_detail', eid=e.id) }}"
+                 class="btn btn-sm btn-outline-primary py-0 px-2">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not equip %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-tools fs-1 d-block mb-2"></i>
+      Aucun équipement enregistré
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

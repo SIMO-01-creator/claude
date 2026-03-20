@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Nouveau paramètre{% endblock %}
+{% block page_title %}Ajouter un paramètre de contrôle{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-list-check me-2"></i>Nouveau paramètre de contrôle</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Produit <span class="text-danger">*</span></label>
+              <select name="produit_id" class="form-select" required>
+                <option value="">— Choisir un produit —</option>
+                {% for p in produits %}
+                <option value="{{ p.id }}">{{ p.code }} — {{ p.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Laboratoire <span class="text-danger">*</span></label>
+              <select name="labo_id" class="form-select" required>
+                <option value="">— Choisir —</option>
+                {% for lid, lnom in LABOS.items() %}
+                <option value="{{ lid }}">{{ lnom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Paramètre <span class="text-danger">*</span></label>
+              <input type="text" name="parametre" class="form-control" required
+                     placeholder="Ex: Humidité, pH, Protéines...">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Unité</label>
+              <input type="text" name="unite" class="form-control" placeholder="%, g/100g, ...">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Fréquence</label>
+              <select name="frequence" class="form-select">
+                <option value="Par lot">Par lot</option>
+                <option value="Journalière">Journalière</option>
+                <option value="Hebdomadaire">Hebdomadaire</option>
+                <option value="Mensuelle">Mensuelle</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Méthode</label>
+              <input type="text" name="methode" class="form-control"
+                     placeholder="ISO 1234, AFNOR...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Étape procédé</label>
+              <input type="text" name="etape_process" class="form-control"
+                     placeholder="Réception, Transformation...">
+            </div>
+
+            <div class="col-12">
+              <hr class="my-1">
+              <p class="fw-semibold small mb-2">Valeurs de référence</p>
+              <div class="row g-2">
+                <div class="col-md">
+                  <label class="form-label small">Valeur cible</label>
+                  <input type="number" step="any" name="valeur_cible" class="form-control">
+                </div>
+                <div class="col-md">
+                  <label class="form-label small">Limite inf.</label>
+                  <input type="number" step="any" name="limite_inf" class="form-control">
+                </div>
+                <div class="col-md">
+                  <label class="form-label small">Limite sup.</label>
+                  <input type="number" step="any" name="limite_sup" class="form-control">
+                </div>
+                <div class="col-md">
+                  <label class="form-label small">Alerte inf.</label>
+                  <input type="number" step="any" name="limite_alerte_inf" class="form-control">
+                </div>
+                <div class="col-md">
+                  <label class="form-label small">Alerte sup.</label>
+                  <input type="number" step="any" name="limite_alerte_sup" class="form-control">
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="obligatoire"
+                       id="obligatoire" checked>
+                <label class="form-check-label" for="obligatoire">Paramètre obligatoire</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea name="notes" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-2"></i>Créer le paramètre
+            </button>
+            <a href="{{ url_for('plan_controle_list') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

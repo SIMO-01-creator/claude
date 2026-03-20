@@ -1,0 +1,23 @@
+# LaboCQ — Dépendances Python
+# Installation : pip install -r requirements.txt
+
+# Web framework
+Flask>=3.0.0
+Flask-Login>=0.6.3
+Flask-Cors>=4.0.0
+gunicorn>=21.2.0
+
+# Base de données (inclus dans Python standard)
+# sqlite3 est inclus dans Python
+
+# Import/Export Excel
+openpyxl>=3.1.0
+
+# Graphiques pour l'analyse des tendances
+matplotlib>=3.7.0
+
+# Export PDF pour les rapports (optionnel)
+reportlab>=4.0.0
+
+# Utilitaires
+Pillow>=10.0.0

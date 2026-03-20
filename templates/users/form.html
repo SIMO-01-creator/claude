@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Modifier' if action == 'edit' else 'Nouvel' }} utilisateur{% endblock %}
+{% block page_title %}{{ 'Modifier' if action == 'edit' else 'Créer' }} un utilisateur{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-person-gear me-2"></i>
+        {{ 'Modifier' if action == 'edit' else 'Nouvel' }} utilisateur
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <!-- Nom / Prénom -->
+            <div class="col-md-6">
+              <label class="form-label">Nom <span class="text-danger">*</span></label>
+              <input type="text" name="nom" class="form-control"
+                     value="{{ user.nom if user else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Prénom <span class="text-danger">*</span></label>
+              <input type="text" name="prenom" class="form-control"
+                     value="{{ user.prenom if user else '' }}" required>
+            </div>
+
+            <!-- Login / Password -->
+            <div class="col-md-6">
+              <label class="form-label">Login <span class="text-danger">*</span></label>
+              <input type="text" name="login" class="form-control"
+                     value="{{ user.login if user else '' }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">
+                Mot de passe
+                {% if action == 'edit' %}
+                  <small class="text-muted">(laisser vide = inchangé)</small>
+                {% else %}
+                  <span class="text-danger">*</span>
+                {% endif %}
+              </label>
+              <input type="password" name="password" class="form-control"
+                     {{ 'required' if action == 'new' else '' }}>
+            </div>
+
+            <!-- Email / Téléphone -->
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ user.email if user else '' }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Téléphone</label>
+              <input type="text" name="telephone" class="form-control"
+                     value="{{ user.telephone if user else '' }}">
+            </div>
+
+            <!-- Rôle -->
+            <div class="col-md-6">
+              <label class="form-label">Rôle <span class="text-danger">*</span></label>
+              <select name="role" class="form-select" required>
+                <option value="">— Choisir un rôle —</option>
+                {% for key, label in ROLES.items() %}
+                <option value="{{ key }}"
+                  {{ 'selected' if user and user.role == key }}>
+                  {{ label }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Statut (edit only) -->
+            {% if action == 'edit' %}
+            <div class="col-md-6">
+              <label class="form-label">Statut</label>
+              <div class="mt-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" name="actif" id="actif"
+                         {{ 'checked' if user.actif }}>
+                  <label class="form-check-label" for="actif">Compte actif</label>
+                </div>
+              </div>
+            </div>
+            {% endif %}
+
+            <!-- Labos -->
+            <div class="col-12">
+              <label class="form-label">Accès aux laboratoires</label>
+              <div class="row g-2">
+                {% for lid, lnom in LABOS.items() %}
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox"
+                           name="labos" value="{{ lid }}" id="labo{{ lid }}"
+                           {{ 'checked' if lid in (user_labos or []) }}>
+                    <label class="form-check-label" for="labo{{ lid }}">{{ lnom }}</label>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea name="notes" class="form-control" rows="2">{{ user.notes if user else '' }}</textarea>
+            </div>
+          </div>
+
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-2"></i>
+              {{ 'Enregistrer les modifications' if action == 'edit' else 'Créer l\'utilisateur' }}
+            </button>
+            <a href="{{ url_for('users_list') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% block title %}Traçabilité{% endblock %}
+{% block page_title %}Traçabilité des lots{% endblock %}
+
+{% block content %}
+<!-- Search bar -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" class="d-flex gap-2">
+      <div class="flex-grow-1">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="lot" class="form-control form-control-lg"
+                 placeholder="Rechercher par numéro de lot..."
+                 value="{{ lot }}" autofocus>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg px-4">Rechercher</button>
+      {% if lot %}
+      <a href="{{ url_for('tracabilite') }}" class="btn btn-outline-secondary btn-lg">
+        <i class="bi bi-x"></i>
+      </a>
+      {% endif %}
+    </form>
+  </div>
+</div>
+
+{% if lot %}
+  {% if results %}
+  <div class="mb-2 text-muted small">
+    {{ results|length }} échantillon(s) trouvé(s) pour "<strong>{{ lot }}</strong>"
+  </div>
+
+  {% for e in results %}
+  <div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <div>
+        <span class="fw-bold">{{ e.numero_lot }}</span>
+        <span class="ms-2 badge bg-light text-dark border">
+          {{ e.produit_code or '' }} — {{ e.produit_nom or 'Produit inconnu' }}
+        </span>
+      </div>
+      <div class="d-flex gap-2">
+        {% if e.nb_nc and e.nb_nc > 0 %}
+        <span class="badge bg-danger">{{ e.nb_nc }} résultat(s) NC</span>
+        {% endif %}
+        {% if e.ncr_ouvertes and e.ncr_ouvertes > 0 %}
+        <span class="badge bg-warning text-dark">{{ e.ncr_ouvertes }} NCR ouverte(s)</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="row g-2">
+        <div class="col-md-3">
+          <small class="text-muted d-block">Code échantillon</small>
+          <code>{{ e.code_echantillon }}</code>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Fournisseur</small>
+          {{ e.fournisseur_nom or '—' }}
+        </div>
+        <div class="col-md-2">
+          <small class="text-muted d-block">Laboratoire</small>
+          {{ LABOS.get(e.labo_id, e.labo_id) }}
+        </div>
+        <div class="col-md-2">
+          <small class="text-muted d-block">Date réception</small>
+          {{ e.date_reception }}
+        </div>
+        <div class="col-md-2">
+          <small class="text-muted d-block">Statut</small>
+          <span class="badge bg-secondary">{{ e.statut }}</span>
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Résultats d'analyses</small>
+          <span class="fw-semibold">{{ e.nb_resultats or 0 }}</span> résultat(s)
+        </div>
+        <div class="col-md-3">
+          <small class="text-muted d-block">Type d'analyse</small>
+          {{ e.type_analyse or '—' }}
+        </div>
+        {% if e.commentaire %}
+        <div class="col-12">
+          <small class="text-muted d-block">Commentaire</small>
+          {{ e.commentaire }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <div class="card">
+    <div class="card-body text-center py-5 text-muted">
+      <i class="bi bi-search fs-1 d-block mb-2"></i>
+      Aucun résultat pour le lot "<strong>{{ lot }}</strong>"
+    </div>
+  </div>
+  {% endif %}
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5 text-muted">
+    <i class="bi bi-search fs-1 d-block mb-3"></i>
+    <h5>Recherche de traçabilité</h5>
+    <p class="mb-0">Saisissez un numéro de lot pour retrouver tous les échantillons associés,<br>
+    les résultats d'analyses et les non-conformités.</p>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

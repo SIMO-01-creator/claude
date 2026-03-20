@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% from 'labo/macros.html' import labo_header %}
+{% block title %}{{ labo_short }} — Ouvrir une NCR{% endblock %}
+{% block page_title %}{{ labo_short }} · Nouvelle NCR{% endblock %}
+
+{% block content %}
+{{ labo_header(labo_id, labo_name, labo_color, 'ncr') }}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-exclamation-triangle me-2 text-danger"></i>
+        Ouvrir une non-conformité — {{ labo_short }}
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Gravité <span class="text-danger">*</span></label>
+              <select name="gravite" class="form-select" required>
+                <option value="Mineure">Mineure</option>
+                <option value="Majeure">Majeure</option>
+                <option value="Critique">Critique</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Échantillon concerné</label>
+              <select name="echantillon_id" class="form-select">
+                <option value="">— Aucun / Non applicable —</option>
+                {% for e in echantillons %}
+                <option value="{{ e.id }}">{{ e.code_echantillon }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description <span class="text-danger">*</span></label>
+              <textarea name="description" class="form-control" rows="4" required
+                        placeholder="Décrire précisément la non-conformité observée..."></textarea>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="lot_bloque" id="lot_bloque">
+                <label class="form-check-label text-danger fw-semibold" for="lot_bloque">
+                  <i class="bi bi-lock me-1"></i>Bloquer le lot
+                </label>
+              </div>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-exclamation-triangle me-2"></i>Ouvrir la NCR
+            </button>
+            <a href="{{ url_for('labo_ncr', labo_id=labo_id) }}"
+               class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

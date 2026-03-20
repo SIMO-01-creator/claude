@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% from 'labo/macros.html' import labo_header %}
+{% block title %}{{ labo_short }} — Nouvel échantillon{% endblock %}
+{% block page_title %}{{ labo_short }} · Nouvel échantillon{% endblock %}
+
+{% block content %}
+{{ labo_header(labo_id, labo_name, labo_color, 'echantillons') }}
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-archive me-2"></i>Enregistrer un échantillon — {{ labo_short }}
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">N° de lot <span class="text-danger">*</span></label>
+              <input type="text" name="numero_lot" class="form-control" required
+                     placeholder="LOT-2024-001">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Date de réception</label>
+              <input type="date" name="date_reception" class="form-control"
+                     value="{{ now.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Produit</label>
+              <select name="produit_id" class="form-select">
+                <option value="">— Choisir (optionnel) —</option>
+                {% for p in produits %}
+                <option value="{{ p.id }}">{{ p.code }} — {{ p.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Fournisseur</label>
+              <select name="fournisseur_id" class="form-select">
+                <option value="">— Choisir (optionnel) —</option>
+                {% for f in fournisseurs %}
+                <option value="{{ f.id }}">{{ f.nom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Type d'analyse</label>
+              <input type="text" name="type_analyse" class="form-control"
+                     placeholder="Physico-chimique, Microbiologie...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Priorité</label>
+              <select name="priorite" class="form-select">
+                <option value="Normale" selected>Normale</option>
+                <option value="Urgent">Urgent</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Commentaire</label>
+              <textarea name="commentaire" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-2"></i>Enregistrer
+            </button>
+            <a href="{{ url_for('labo_echantillons', labo_id=labo_id) }}"
+               class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,27 @@
+{% macro labo_header(labo_id, labo_name, labo_color, active_module) %}
+{% set tabs = [
+  ('labo_dashboard',    'bi-speedometer2',             'Dashboard'),
+  ('labo_echantillons', 'bi-archive',                  'Échantillons'),
+  ('labo_resultats',    'bi-pencil-square',             'Résultats'),
+  ('labo_ncr',          'bi-exclamation-triangle',      'NCR'),
+  ('labo_equipment',    'bi-tools',                     'Équipements'),
+  ('labo_tendances',    'bi-graph-up',                  'Tendances'),
+  ('labo_onboarding',   'bi-people',                    'RH'),
+  ('labo_rapports',     'bi-file-earmark-bar-graph',    'Rapports'),
+] %}
+<div class="labo-header-bar mb-3" style="background: linear-gradient(135deg, {{ labo_color }}, {{ labo_color }}cc);">
+  <div>
+    <div class="labo-title">
+      <i class="bi bi-flask me-2"></i>{{ labo_name }}
+    </div>
+  </div>
+  <div class="labo-tabs">
+    {% for endpoint, icon, label in tabs %}
+    <a href="{{ url_for(endpoint, labo_id=labo_id) }}"
+       class="labo-tab {% if request.endpoint == endpoint %}active{% endif %}">
+      <i class="bi {{ icon }} me-1"></i>{{ label }}
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endmacro %}

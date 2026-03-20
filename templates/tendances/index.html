@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% block title %}Tendances{% endblock %}
+{% block page_title %}Analyse des tendances{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Controls -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="row g-2 align-items-end">
+          <div class="col-md-8">
+            <label class="form-label small fw-semibold">Paramètre à analyser</label>
+            <select id="plan-select" class="form-select">
+              <option value="">— Choisir un paramètre —</option>
+              {% for p in plans %}
+              <option value="{{ p.id }}">{{ p.produit_nom }} — {{ p.parametre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <button id="load-btn" class="btn btn-primary w-100">
+              <i class="bi bi-graph-up me-2"></i>Afficher le graphique
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span id="chart-title"><i class="bi bi-graph-up me-2"></i>Graphique de tendance</span>
+        <div id="chart-legend" class="d-flex gap-3 small" style="display:none!important;"></div>
+      </div>
+      <div class="card-body">
+        <div id="no-data" class="text-center py-5 text-muted">
+          <i class="bi bi-graph-up fs-1 d-block mb-2"></i>
+          Sélectionnez un paramètre pour afficher le graphique
+        </div>
+        <div id="chart-wrapper" class="chart-container" style="display:none;">
+          <canvas id="trend-chart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats card (hidden until loaded) -->
+  <div class="col-12" id="stats-card" style="display:none;">
+    <div class="row g-2" id="stats-row"></div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  let chart = null;
+
+  document.getElementById('load-btn').addEventListener('click', loadChart);
+  document.getElementById('plan-select').addEventListener('change', () => {
+    if (document.getElementById('plan-select').value) loadChart();
+  });
+
+  function loadChart() {
+    const planId = document.getElementById('plan-select').value;
+    if (!planId) return;
+
+    fetch(`/tendances/data?plan_id=${planId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!data.labels || data.labels.length === 0) {
+          document.getElementById('no-data').textContent = 'Aucune donnée pour ce paramètre.';
+          document.getElementById('no-data').style.display = '';
+          document.getElementById('chart-wrapper').style.display = 'none';
+          document.getElementById('stats-card').style.display = 'none';
+          return;
+        }
+        document.getElementById('no-data').style.display = 'none';
+        document.getElementById('chart-wrapper').style.display = '';
+        document.getElementById('stats-card').style.display = '';
+
+        const label = `${data.parametre}${data.unite ? ' (' + data.unite + ')' : ''}`;
+        document.getElementById('chart-title').innerHTML =
+          `<i class="bi bi-graph-up me-2"></i>${label} — 60 derniers jours`;
+
+        // Build datasets
+        const datasets = [{
+          label: label,
+          data: data.values,
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.08)',
+          borderWidth: 2,
+          pointRadius: 4,
+          tension: 0.3,
+          fill: true,
+        }];
+
+        if (data.limit_sup !== null) {
+          datasets.push({
+            label: 'Limite sup.',
+            data: data.labels.map(() => data.limit_sup),
+            borderColor: '#ef4444',
+            borderWidth: 1,
+            borderDash: [6,3],
+            pointRadius: 0,
+            fill: false,
+          });
+        }
+        if (data.limit_inf !== null) {
+          datasets.push({
+            label: 'Limite inf.',
+            data: data.labels.map(() => data.limit_inf),
+            borderColor: '#f97316',
+            borderWidth: 1,
+            borderDash: [6,3],
+            pointRadius: 0,
+            fill: false,
+          });
+        }
+        if (data.cible !== null) {
+          datasets.push({
+            label: 'Cible',
+            data: data.labels.map(() => data.cible),
+            borderColor: '#22c55e',
+            borderWidth: 1,
+            borderDash: [4,4],
+            pointRadius: 0,
+            fill: false,
+          });
+        }
+
+        if (chart) chart.destroy();
+        chart = new Chart(document.getElementById('trend-chart'), {
+          type: 'line',
+          data: { labels: data.labels, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+              tooltip: { mode: 'index', intersect: false },
+            },
+            scales: {
+              x: { ticks: { maxTicksLimit: 12, font: { size: 11 } } },
+              y: { ticks: { font: { size: 11 } } },
+            },
+          }
+        });
+
+        // Stats
+        const vals = data.values.filter(v => v !== null);
+        if (vals.length > 0) {
+          const avg = vals.reduce((a,b) => a+b, 0) / vals.length;
+          const mn = Math.min(...vals);
+          const mx = Math.max(...vals);
+          document.getElementById('stats-row').innerHTML = `
+            <div class="col-md-3"><div class="card text-center py-2">
+              <div class="fw-bold fs-5">${vals.length}</div>
+              <div class="text-muted small">Mesures</div>
+            </div></div>
+            <div class="col-md-3"><div class="card text-center py-2">
+              <div class="fw-bold fs-5">${avg.toFixed(3)}</div>
+              <div class="text-muted small">Moyenne</div>
+            </div></div>
+            <div class="col-md-3"><div class="card text-center py-2">
+              <div class="fw-bold fs-5">${mn.toFixed(3)}</div>
+              <div class="text-muted small">Minimum</div>
+            </div></div>
+            <div class="col-md-3"><div class="card text-center py-2">
+              <div class="fw-bold fs-5">${mx.toFixed(3)}</div>
+              <div class="text-muted small">Maximum</div>
+            </div></div>
+          `;
+        }
+      });
+  }
+</script>
+{% endblock %}
+{% endblock %}

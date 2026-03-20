@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% block title %}Rapports{% endblock %}
+{% block page_title %}Rapports & Statistiques{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- KPI stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-3">
+      <div class="fw-bold fs-3 text-primary">{{ stats.total_resultats }}</div>
+      <div class="text-muted small">Résultats totaux</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-3">
+      <div class="fw-bold fs-3 text-danger">{{ stats.total_nc }}</div>
+      <div class="text-muted small">Résultats non-conformes</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-3">
+      <div class="fw-bold fs-3 text-warning">{{ stats.total_ncr }}</div>
+      <div class="text-muted small">NCR totales</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="card text-center py-3">
+      <div class="fw-bold fs-3 text-danger">{{ stats.ncr_ouvertes }}</div>
+      <div class="text-muted small">NCR ouvertes</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- NCR by severity chart -->
+  <div class="col-12 col-md-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-pie-chart me-2"></i>NCR par gravité
+      </div>
+      <div class="card-body d-flex align-items-center justify-content-center">
+        {% if ncr_by_gravite %}
+        <div style="max-width: 260px; width: 100%;">
+          <canvas id="gravite-chart"></canvas>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">Aucune NCR enregistrée</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- NCR by labo table -->
+  <div class="col-12 col-md-7">
+    <div class="card h-100">
+      <div class="card-header">
+        <i class="bi bi-table me-2"></i>NCR par laboratoire
+      </div>
+      <div class="card-body p-0">
+        {% if ncr_by_labo %}
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>Laboratoire</th>
+              <th>Ouverte</th>
+              <th>Clôturée</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% set ns = namespace(labo_data={}) %}
+            {% for row in ncr_by_labo %}
+              {% if row.labo_id not in ns.labo_data %}
+                {% set _ = ns.labo_data.update({row.labo_id: {'Ouverte': 0, 'Clôturée': 0}}) %}
+              {% endif %}
+              {% set _ = ns.labo_data[row.labo_id].update({row.statut: row.count}) %}
+            {% endfor %}
+            {% for lid, counts in ns.labo_data.items() %}
+            <tr>
+              <td class="small">{{ LABOS.get(lid, lid) }}</td>
+              <td><span class="badge bg-danger-subtle text-danger">{{ counts.get('Ouverte', 0) }}</span></td>
+              <td><span class="badge bg-success-subtle text-success">{{ counts.get('Clôturée', 0) }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center py-4 text-muted small">Aucune donnée</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent results -->
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-clock-history me-2"></i>Derniers résultats
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Échantillon</th>
+                <th>Lot</th>
+                <th>Paramètre</th>
+                <th>Valeur</th>
+                <th>Unité</th>
+                <th>Conforme</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in recent_resultats %}
+              <tr class="{{ 'table-danger' if r.conforme == 0 else '' }}">
+                <td><code class="small">{{ r.code_echantillon }}</code></td>
+                <td class="small">{{ r.numero_lot }}</td>
+                <td class="small">{{ r.parametre }}</td>
+                <td class="{{ 'text-danger fw-bold' if r.conforme == 0 else '' }}">
+                  {{ r.valeur_numerique if r.valeur_numerique is not none else '—' }}
+                </td>
+                <td class="small text-muted">{{ r.unite or '—' }}</td>
+                <td>
+                  {% if r.conforme == 1 %}
+                  <span class="badge badge-conforme-1">Conforme</span>
+                  {% elif r.conforme == 0 %}
+                  <span class="badge badge-conforme-0">NC</span>
+                  {% else %}—{% endif %}
+                </td>
+                <td class="small text-muted">{{ r.date_saisie[:10] if r.date_saisie else '—' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  {% if ncr_by_gravite %}
+  const graviteData = {{ ncr_by_gravite | map(attribute='count') | list | tojson }};
+  const graviteLabels = {{ ncr_by_gravite | map(attribute='gravite') | list | tojson }};
+  new Chart(document.getElementById('gravite-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: graviteLabels,
+      datasets: [{
+        data: graviteData,
+        backgroundColor: ['#fbbf24', '#f97316', '#ef4444'],
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { size: 11 } } }
+      }
+    }
+  });
+  {% endif %}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { promptFeedback } from './feedback';
 
 const client = new Anthropic();
 
@@ -10,6 +11,8 @@ async function main() {
   });
 
   console.log(message.content);
+
+  await promptFeedback();
 }
 
 main().catch(console.error);

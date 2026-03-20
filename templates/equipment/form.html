@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}Nouvel équipement{% endblock %}
+{% block page_title %}Enregistrer un équipement{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-tools me-2"></i>Nouvel équipement</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Code équipement <span class="text-danger">*</span></label>
+              <input type="text" name="code_equipement" class="form-control" required
+                     placeholder="EQ-001">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">Nom <span class="text-danger">*</span></label>
+              <input type="text" name="nom" class="form-control" required
+                     placeholder="Spectrophotomètre UV/VIS">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Marque</label>
+              <input type="text" name="marque" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Modèle</label>
+              <input type="text" name="modele" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">N° de série</label>
+              <input type="text" name="numero_serie" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Laboratoire <span class="text-danger">*</span></label>
+              <select name="labo_id" class="form-select" required>
+                <option value="">— Choisir —</option>
+                {% for lid, lnom in LABOS.items() %}
+                <option value="{{ lid }}">{{ lnom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Date mise en service</label>
+              <input type="date" name="date_mise_en_service" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Prochaine vérification</label>
+              <input type="date" name="prochaine_verification" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Prochain étalonnage</label>
+              <input type="date" name="prochaine_etalonnage" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Statut</label>
+              <select name="statut" class="form-select">
+                <option value="Opérationnel" selected>Opérationnel</option>
+                <option value="En maintenance">En maintenance</option>
+                <option value="Hors service">Hors service</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea name="notes" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-2"></i>Enregistrer
+            </button>
+            <a href="{{ url_for('equipment_list') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

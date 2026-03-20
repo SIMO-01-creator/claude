@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Ouvrir une NCR{% endblock %}
+{% block page_title %}Ouvrir une non-conformité{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-exclamation-triangle me-2 text-danger"></i>Nouvelle non-conformité
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Laboratoire <span class="text-danger">*</span></label>
+              <select name="labo_id" class="form-select" required>
+                <option value="">— Choisir —</option>
+                {% for lid, lnom in LABOS.items() %}
+                <option value="{{ lid }}">{{ lnom }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Gravité <span class="text-danger">*</span></label>
+              <select name="gravite" class="form-select" required>
+                <option value="Mineure">Mineure</option>
+                <option value="Majeure">Majeure</option>
+                <option value="Critique">Critique</option>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Échantillon concerné</label>
+              <select name="echantillon_id" class="form-select">
+                <option value="">— Aucun / Non applicable —</option>
+                {% for e in echantillons %}
+                <option value="{{ e.id }}">{{ e.code_echantillon }} (lot: {{ e.numero_lot }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description de la non-conformité <span class="text-danger">*</span></label>
+              <textarea name="description" class="form-control" rows="4"
+                        placeholder="Décrire précisément la non-conformité observée..." required></textarea>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="lot_bloque" id="lot_bloque">
+                <label class="form-check-label text-danger fw-semibold" for="lot_bloque">
+                  <i class="bi bi-lock me-1"></i>Bloquer le lot
+                </label>
+                <div class="form-text">Cochez si le lot doit être mis en quarantaine.</div>
+              </div>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-exclamation-triangle me-2"></i>Ouvrir la NCR
+            </button>
+            <a href="{{ url_for('ncr_list') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Résultats{% endblock %}
+{% block page_title %}Résultats d'analyses{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  {% if current_user.perm('write_results') or current_user.perm('all') %}
+  <a href="{{ url_for('resultats_new') }}" class="btn btn-primary">
+    <i class="bi bi-pencil-square me-2"></i>Saisir un résultat
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-clipboard-data me-2"></i>Derniers résultats ({{ resultats|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Échantillon</th>
+            <th>Lot</th>
+            <th>Paramètre</th>
+            <th>Valeur</th>
+            <th>Unité</th>
+            <th>Conforme</th>
+            <th>Opérateur</th>
+            <th>Validé par</th>
+            <th>Date saisie</th>
+            {% if current_user.perm('validate_results') or current_user.perm('all') %}
+            <th></th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in resultats %}
+          <tr class="{{ 'table-danger' if r.conforme == 0 else '' }}">
+            <td><code class="small">{{ r.code_echantillon }}</code></td>
+            <td class="small">{{ r.numero_lot }}</td>
+            <td class="fw-semibold">{{ r.parametre }}</td>
+            <td class="fw-bold {{ 'text-danger' if r.conforme == 0 else '' }}">
+              {{ r.valeur_numerique if r.valeur_numerique is not none else r.valeur_texte or '—' }}
+            </td>
+            <td class="small text-muted">{{ r.unite or '—' }}</td>
+            <td>
+              {% if r.conforme == 1 %}
+                <span class="badge badge-conforme-1">Conforme</span>
+              {% elif r.conforme == 0 %}
+                <span class="badge badge-conforme-0">Non-conforme</span>
+              {% else %}
+                <span class="badge bg-secondary">—</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ r.operateur_nom or '—' }}</td>
+            <td class="small">
+              {% if r.validateur_nom %}
+                <span class="badge bg-success-subtle text-success">{{ r.validateur_nom }}</span>
+              {% else %}
+                <span class="badge bg-warning-subtle text-warning">En attente</span>
+              {% endif %}
+            </td>
+            <td class="small text-muted">{{ r.date_saisie[:16] if r.date_saisie else '—' }}</td>
+            {% if current_user.perm('validate_results') or current_user.perm('all') %}
+            <td>
+              {% if not r.validateur_id %}
+              <form method="post"
+                    action="{{ url_for('resultats_validate', rid=r.id) }}">
+                <button type="submit" class="btn btn-xs btn-outline-success btn-sm py-0 px-2">
+                  <i class="bi bi-check"></i> Valider
+                </button>
+              </form>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not resultats %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-clipboard-data fs-1 d-block mb-2"></i>
+      Aucun résultat enregistré
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

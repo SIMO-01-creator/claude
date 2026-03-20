@@ -1,8 +1,9 @@
 # LaboCQ — Dépendances Python
 # Installation : pip install -r requirements.txt
 
-# Interface graphique (inclus dans Python standard)
-# tkinter est inclus dans les distributions Python standard
+# Web framework
+Flask>=3.0.0
+Flask-Login>=0.6.3
 
 # Base de données (inclus dans Python standard)
 # sqlite3 est inclus dans Python

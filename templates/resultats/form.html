@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Saisir un résultat{% endblock %}
+{% block page_title %}Saisie d'un résultat{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-pencil-square me-2"></i>Nouveau résultat</div>
+      <div class="card-body">
+        <form method="post">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label">Échantillon <span class="text-danger">*</span></label>
+              <select name="echantillon_id" class="form-select" required id="ech-select">
+                <option value="">— Choisir un échantillon en attente —</option>
+                {% for e in echantillons %}
+                <option value="{{ e.id }}">{{ e.code_echantillon }} — Lot: {{ e.numero_lot }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Paramètre (plan de contrôle)</label>
+              <select name="plan_controle_id" class="form-select" id="plan-select">
+                <option value="">— Saisie libre (sans plan) —</option>
+                {% for p in plans %}
+                <option value="{{ p.id }}"
+                        data-inf="{{ p.limite_inf or '' }}"
+                        data-sup="{{ p.limite_sup or '' }}"
+                        data-cible="{{ p.valeur_cible or '' }}"
+                        data-unite="{{ p.unite or '' }}">
+                  {{ p.produit_nom }} — {{ p.parametre }}
+                  {% if p.limite_inf is not none or p.limite_sup is not none %}
+                    [{{ p.limite_inf or '—' }} / {{ p.limite_sup or '—' }} {{ p.unite or '' }}]
+                  {% endif %}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Limits display -->
+            <div id="limits-box" class="col-12" style="display:none;">
+              <div class="alert alert-info py-2 small mb-0">
+                <strong>Limites :</strong>
+                <span id="limits-text"></span>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label">Paramètre (libellé) <span class="text-danger">*</span></label>
+              <input type="text" name="parametre" class="form-control"
+                     id="param-input" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Valeur numérique</label>
+              <input type="number" step="any" name="valeur_numerique"
+                     class="form-control" id="val-input">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Unité</label>
+              <input type="text" name="unite" class="form-control" id="unite-input">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Valeur texte (qualitatif)</label>
+              <input type="text" name="valeur_texte" class="form-control"
+                     placeholder="Conforme / Non-conforme / Absent / Présent...">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Commentaire</label>
+              <textarea name="commentaire" class="form-control" rows="2"></textarea>
+            </div>
+          </div>
+          <hr class="my-4">
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-2"></i>Enregistrer le résultat
+            </button>
+            <a href="{{ url_for('resultats_list') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  const planSelect = document.getElementById('plan-select');
+  const paramInput = document.getElementById('param-input');
+  const uniteInput = document.getElementById('unite-input');
+  const limitsBox = document.getElementById('limits-box');
+  const limitsText = document.getElementById('limits-text');
+
+  planSelect.addEventListener('change', () => {
+    const opt = planSelect.selectedOptions[0];
+    if (opt && opt.value) {
+      const text = opt.text.split(' — ')[1]?.split(' [')[0] || '';
+      paramInput.value = text;
+      uniteInput.value = opt.dataset.unite || '';
+      const inf = opt.dataset.inf;
+      const sup = opt.dataset.sup;
+      const cible = opt.dataset.cible;
+      if (inf || sup || cible) {
+        let parts = [];
+        if (inf) parts.push(`Min: ${inf}`);
+        if (cible) parts.push(`Cible: ${cible}`);
+        if (sup) parts.push(`Max: ${sup}`);
+        limitsText.textContent = ' ' + parts.join(' | ') + ' ' + (opt.dataset.unite || '');
+        limitsBox.style.display = '';
+      } else {
+        limitsBox.style.display = 'none';
+      }
+    } else {
+      limitsBox.style.display = 'none';
+    }
+  });
+</script>
+{% endblock %}
+{% endblock %}

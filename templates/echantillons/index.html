@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Échantillons{% endblock %}
+{% block page_title %}Échantillons{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  {% if current_user.perm('register_samples') or current_user.perm('manage_samples') or current_user.perm('all') %}
+  <a href="{{ url_for('echantillons_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-2"></i>Enregistrer un échantillon
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-archive me-2"></i>Échantillons reçus ({{ echantillons|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>N° Lot</th>
+            <th>Produit</th>
+            <th>Fournisseur</th>
+            <th>Labo</th>
+            <th>Date réception</th>
+            <th>Statut</th>
+            <th>Priorité</th>
+            <th>Opérateur</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in echantillons %}
+          <tr>
+            <td><code class="small">{{ e.code_echantillon }}</code></td>
+            <td class="fw-semibold">{{ e.numero_lot }}</td>
+            <td class="small">{{ e.produit_nom or '—' }}</td>
+            <td class="small text-muted">{{ e.fournisseur_nom or '—' }}</td>
+            <td class="small">{{ LABOS.get(e.labo_id, e.labo_id) }}</td>
+            <td class="small">{{ e.date_reception }}</td>
+            <td>
+              <span class="badge
+                {% if e.statut == 'En attente' %}bg-warning-subtle text-warning
+                {% elif e.statut == 'Analysé' %}bg-success-subtle text-success
+                {% else %}bg-secondary-subtle text-secondary{% endif %}">
+                {{ e.statut }}
+              </span>
+            </td>
+            <td>
+              <span class="badge
+                {% if e.priorite == 'Urgent' %}bg-danger{% else %}bg-secondary{% endif %}
+                bg-opacity-75">
+                {{ e.priorite or 'Normale' }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ e.operateur_nom or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not echantillons %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-archive fs-1 d-block mb-2"></i>
+      Aucun échantillon enregistré
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

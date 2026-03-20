@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% block title %}Plan de contrôle{% endblock %}
+{% block page_title %}Plan de contrôle{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div></div>
+  {% if current_user.perm('admin') or current_user.perm('all') %}
+  <a href="{{ url_for('plan_controle_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-2"></i>Ajouter un paramètre
+  </a>
+  {% endif %}
+</div>
+
+<!-- Filter by product -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <label class="form-label mb-0 small fw-semibold">Filtrer par produit :</label>
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-primary filter-btn" data-filter="all">Tous</button>
+        {% for p in produits %}
+        <button class="btn btn-sm btn-outline-primary filter-btn" data-filter="{{ p.id }}">
+          {{ p.code }} — {{ p.nom }}
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-list-check me-2"></i>Paramètres de contrôle ({{ plans|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0" id="plans-table">
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Paramètre</th>
+            <th>Unité</th>
+            <th>Méthode</th>
+            <th>Fréquence</th>
+            <th>Cible</th>
+            <th>Limites (inf / sup)</th>
+            <th>Étape</th>
+            <th>Oblig.</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in plans %}
+          <tr data-product="{{ p.produit_id }}">
+            <td class="small">
+              <span class="badge bg-light text-dark border">{{ p.produit_code }}</span>
+              <div class="text-muted">{{ p.produit_nom }}</div>
+            </td>
+            <td class="fw-semibold">{{ p.parametre }}</td>
+            <td class="small text-muted">{{ p.unite or '—' }}</td>
+            <td class="small text-muted">{{ p.methode or '—' }}</td>
+            <td class="small">{{ p.frequence }}</td>
+            <td class="small">{{ p.valeur_cible if p.valeur_cible is not none else '—' }}</td>
+            <td class="small">
+              {% if p.limite_inf is not none or p.limite_sup is not none %}
+                {{ p.limite_inf if p.limite_inf is not none else '—' }}
+                /
+                {{ p.limite_sup if p.limite_sup is not none else '—' }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="small text-muted">{{ p.etape_process or '—' }}</td>
+            <td>
+              {% if p.obligatoire %}
+              <span class="badge bg-danger-subtle text-danger">Oui</span>
+              {% else %}
+              <span class="badge bg-secondary-subtle text-secondary">Non</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not plans %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-list-check fs-1 d-block mb-2"></i>
+      Aucun plan de contrôle défini
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-outline-primary');
+      });
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-outline-primary');
+      const filter = btn.dataset.filter;
+      document.querySelectorAll('#plans-table tbody tr').forEach(row => {
+        row.style.display = (filter === 'all' || row.dataset.product === filter) ? '' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}
+{% endblock %}

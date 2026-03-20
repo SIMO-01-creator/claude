@@ -40,3 +40,20 @@ coverage/
 
 # OS
 Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+
+# Database / data files
+*.db
+*.sqlite
+*.sqlite3
+labo_cq_data/
+
+# Flask
+instance/
+.webassets-cache

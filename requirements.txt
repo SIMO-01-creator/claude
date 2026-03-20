@@ -1,0 +1,20 @@
+# LaboCQ — Dépendances Python
+# Installation : pip install -r requirements.txt
+
+# Interface graphique (inclus dans Python standard)
+# tkinter est inclus dans les distributions Python standard
+
+# Base de données (inclus dans Python standard)
+# sqlite3 est inclus dans Python
+
+# Import/Export Excel
+openpyxl>=3.1.0
+
+# Graphiques pour l'analyse des tendances
+matplotlib>=3.7.0
+
+# Export PDF pour les rapports (optionnel)
+reportlab>=4.0.0
+
+# Utilitaires
+Pillow>=10.0.0

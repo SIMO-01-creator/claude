@@ -301,6 +301,13 @@ def init_database():
         )
     """)
 
+    # ── Migration: api_token column (added for Glide REST API) ──────────────
+    try:
+        c.execute("ALTER TABLE utilisateurs ADD COLUMN api_token TEXT")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
+
     conn.commit()
     conn.close()
     _create_default_admin()

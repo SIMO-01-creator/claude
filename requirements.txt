@@ -4,6 +4,7 @@
 # Web framework
 Flask>=3.0.0
 Flask-Login>=0.6.3
+Flask-Cors>=4.0.0
 gunicorn>=21.2.0
 
 # Base de données (inclus dans Python standard)

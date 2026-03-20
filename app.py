@@ -7,6 +7,7 @@ from functools import wraps
 
 from flask import (Flask, render_template, redirect, url_for, request,
                    flash, jsonify, abort)
+from flask_cors import CORS
 from flask_login import (LoginManager, UserMixin, login_user, logout_user,
                          login_required, current_user)
 
@@ -16,6 +17,13 @@ from core.database import (init_database, authenticate, get_connection,
 # ─────────────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'labocq-dev-secret-changeme')
+
+# Enable CORS for the /api/* routes so Glide (and other frontends) can call them
+CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# Register the REST API blueprint (used by Glide and other no-code platforms)
+from api import api as api_blueprint  # noqa: E402
+app.register_blueprint(api_blueprint)
 
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'

@@ -19,35 +19,59 @@
   </div>
 
   <div class="pt-2 pb-3">
-    <span class="nav-section">Principal</span>
 
+    <!-- Global dashboard -->
     <a href="{{ url_for('dashboard') }}"
        class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
-      <i class="bi bi-speedometer2"></i> Dashboard
+      <i class="bi bi-speedometer2"></i> Vue globale
     </a>
 
-    {% if current_user.perm('register_samples') or current_user.perm('manage_samples') or current_user.perm('all') or current_user.perm('read_all') %}
-    <a href="{{ url_for('echantillons_list') }}"
-       class="nav-link {% if 'echantillon' in request.endpoint %}active{% endif %}">
-      <i class="bi bi-archive"></i> Échantillons
-    </a>
-    {% endif %}
+    <!-- ── LABORATOIRES ───────────────────────────────────────── -->
+    <span class="nav-section mt-2">Laboratoires</span>
 
-    {% if current_user.perm('write_results') or current_user.perm('read_all') or current_user.perm('all') or current_user.perm('read_results') %}
-    <a href="{{ url_for('resultats_list') }}"
-       class="nav-link {% if 'resultats' in request.endpoint %}active{% endif %}">
-      <i class="bi bi-pencil-square"></i> Saisie résultats
-    </a>
-    {% endif %}
+    {% set labo_modules = [
+      ('labo_dashboard',   'bi-speedometer2', 'Dashboard'),
+      ('labo_echantillons','bi-archive',       'Échantillons'),
+      ('labo_resultats',   'bi-pencil-square', 'Résultats'),
+      ('labo_ncr',         'bi-exclamation-triangle', 'Non-conformités'),
+      ('labo_equipment',   'bi-tools',         'Équipements'),
+      ('labo_tendances',   'bi-graph-up',      'Tendances'),
+      ('labo_onboarding',  'bi-people',        'Onboarding / RH'),
+      ('labo_rapports',    'bi-file-earmark-bar-graph', 'Rapports'),
+    ] %}
 
-    {% if current_user.perm('open_ncr') or current_user.perm('read_all') or current_user.perm('all') or current_user.perm('comment_ncr') %}
-    <a href="{{ url_for('ncr_list') }}"
-       class="nav-link {% if 'ncr' in request.endpoint %}active{% endif %}">
-      <i class="bi bi-exclamation-triangle"></i> Non-conformités
-    </a>
-    {% endif %}
+    {% for lid, lname in LABOS.items() %}
+    {% set is_open = active_labo_id is defined and active_labo_id == lid %}
+    <div>
+      <!-- Lab header — click to toggle -->
+      <a href="{{ url_for('labo_dashboard', labo_id=lid) }}"
+         class="nav-link lab-toggle d-flex align-items-center justify-content-between"
+         data-bs-toggle="collapse" data-bs-target="#lab-{{ lid }}"
+         aria-expanded="{{ 'true' if is_open else 'false' }}"
+         onclick="event.preventDefault(); document.getElementById('lab-{{ lid }}').classList.toggle('show');">
+        <span class="d-flex align-items-center gap-2">
+          <i class="bi bi-circle-fill" style="color:{{ LABO_COLORS[lid] }};font-size:8px;"></i>
+          <span style="font-size:.8rem;">{{ LABO_SHORT[lid] }}</span>
+        </span>
+        <i class="bi bi-chevron-{{ 'up' if is_open else 'down' }} small chevron-icon"></i>
+      </a>
 
-    <span class="nav-section">Référentiel</span>
+      <!-- Lab sub-navigation -->
+      <div id="lab-{{ lid }}" class="{{ 'show' if is_open else '' }}">
+        {% for endpoint, icon, label in labo_modules %}
+        <a href="{{ url_for(endpoint, labo_id=lid) }}"
+           class="nav-link nav-sub
+             {% if active_labo_id is defined and active_labo_id == lid
+                   and request.endpoint == endpoint %}active{% endif %}">
+          <i class="bi {{ icon }}"></i> {{ label }}
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- ── RÉFÉRENTIEL ────────────────────────────────────────── -->
+    <span class="nav-section mt-2">Référentiel</span>
 
     {% if current_user.perm('admin') or current_user.perm('read_all') or current_user.perm('all') or current_user.perm('read_plan') %}
     <a href="{{ url_for('plan_controle_list') }}"
@@ -56,52 +80,23 @@
     </a>
     {% endif %}
 
-    {% if current_user.perm('manage_equipments') or current_user.perm('read_equipments') or current_user.perm('all') %}
-    <a href="{{ url_for('equipment_list') }}"
-       class="nav-link {% if 'equipment' in request.endpoint %}active{% endif %}">
-      <i class="bi bi-tools"></i> Équipements
-    </a>
-    {% endif %}
-
-    <span class="nav-section">Analyse</span>
-
     <a href="{{ url_for('tracabilite') }}"
        class="nav-link {% if request.endpoint == 'tracabilite' %}active{% endif %}">
       <i class="bi bi-search"></i> Traçabilité
     </a>
 
-    <a href="{{ url_for('tendances') }}"
-       class="nav-link {% if request.endpoint == 'tendances' or request.endpoint == 'tendances_data' %}active{% endif %}">
-      <i class="bi bi-graph-up"></i> Tendances
-    </a>
-
-    {% if current_user.perm('read_reports') or current_user.perm('download_reports') or current_user.perm('all') %}
-    <a href="{{ url_for('rapports') }}"
-       class="nav-link {% if request.endpoint == 'rapports' %}active{% endif %}">
-      <i class="bi bi-file-earmark-bar-graph"></i> Rapports
-    </a>
-    {% endif %}
-
-    <span class="nav-section">RH</span>
-
-    <a href="{{ url_for('onboarding') }}"
-       class="nav-link {% if 'onboarding' in request.endpoint %}active{% endif %}">
-      <i class="bi bi-people"></i> Onboarding / RH
-    </a>
-
+    <!-- ── ADMINISTRATION ─────────────────────────────────────── -->
     {% if current_user.perm('admin') or current_user.perm('all') %}
-    <span class="nav-section">Administration</span>
+    <span class="nav-section mt-2">Administration</span>
 
     <a href="{{ url_for('users_list') }}"
        class="nav-link {% if 'users' in request.endpoint %}active{% endif %}">
       <i class="bi bi-person-gear"></i> Utilisateurs
     </a>
-
     <a href="{{ url_for('produits_list') }}"
        class="nav-link {% if 'produits' in request.endpoint %}active{% endif %}">
       <i class="bi bi-box-seam"></i> Produits
     </a>
-
     <a href="{{ url_for('fournisseurs_list') }}"
        class="nav-link {% if 'fournisseurs' in request.endpoint %}active{% endif %}">
       <i class="bi bi-truck"></i> Fournisseurs
@@ -160,12 +155,26 @@
   // Live clock
   function updateClock() {
     const now = new Date();
-    document.getElementById('clock').textContent =
+    const el = document.getElementById('clock');
+    if (el) el.textContent =
       now.toLocaleDateString('fr-FR') + ' ' +
       now.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
   }
   updateClock();
   setInterval(updateClock, 60000);
+
+  // Rotate chevron when lab section opens/closes
+  document.querySelectorAll('.lab-toggle').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const chevron = this.querySelector('.chevron-icon');
+      if (!chevron) return;
+      const targetId = this.getAttribute('data-bs-target');
+      const panel = document.querySelector(targetId);
+      const isOpen = panel && panel.classList.contains('show');
+      chevron.className = chevron.className.replace(/bi-chevron-(up|down)/,
+        isOpen ? 'bi-chevron-down' : 'bi-chevron-up');
+    });
+  });
 </script>
 {% block scripts %}{% endblock %}
 </body>

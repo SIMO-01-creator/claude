@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% from 'labo/macros.html' import labo_header %}
+{% block title %}{{ labo_short }} — Dashboard{% endblock %}
+{% block page_title %}{{ labo_short }}{% endblock %}
+
+{% block content %}
+{{ labo_header(labo_id, labo_name, labo_color, 'dashboard') }}
+
+<!-- KPI Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xl">
+    <div class="kpi-card kpi-blue">
+      <div class="kpi-value">{{ kpis.echantillons_attente }}</div>
+      <div class="kpi-label">Échantillons en attente</div>
+      <i class="bi bi-archive kpi-icon"></i>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl">
+    <div class="kpi-card kpi-red">
+      <div class="kpi-value">{{ kpis.ncr_ouvertes }}</div>
+      <div class="kpi-label">NCR ouvertes</div>
+      <i class="bi bi-exclamation-triangle kpi-icon"></i>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl">
+    <div class="kpi-card kpi-orange">
+      <div class="kpi-value">{{ kpis.equip_alerte }}</div>
+      <div class="kpi-label">Étalonnages à prévoir</div>
+      <i class="bi bi-tools kpi-icon"></i>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl">
+    <div class="kpi-card kpi-green">
+      <div class="kpi-value">{{ kpis.resultats_today }}</div>
+      <div class="kpi-label">Résultats saisis aujourd'hui</div>
+      <i class="bi bi-pencil-square kpi-icon"></i>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xl">
+    <div class="kpi-card kpi-purple">
+      <div class="kpi-value">{{ kpis.competences_alerte }}</div>
+      <div class="kpi-label">Compétences expirées/alerte</div>
+      <i class="bi bi-people kpi-icon"></i>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Open NCRs -->
+  <div class="col-12 col-xl-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-exclamation-triangle text-danger me-2"></i>NCR ouvertes</span>
+        <a href="{{ url_for('labo_ncr', labo_id=labo_id) }}"
+           class="btn btn-sm btn-outline-primary">Voir tout</a>
+      </div>
+      <div class="card-body p-0">
+        {% if ncr_list %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr><th>N°</th><th>Gravité</th><th>Échantillon</th><th>Description</th><th>Date</th><th></th></tr>
+            </thead>
+            <tbody>
+              {% for n in ncr_list %}
+              <tr>
+                <td class="fw-semibold">{{ n.numero_ncr }}</td>
+                <td><span class="badge badge-gravite-{{ n.gravite }}">{{ n.gravite }}</span></td>
+                <td class="text-muted small">{{ n.code_echantillon or '—' }}</td>
+                <td class="small" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ n.description }}</td>
+                <td class="text-muted small">{{ n.date_ouverture[:10] if n.date_ouverture else '—' }}</td>
+                <td>
+                  <a href="{{ url_for('ncr_detail', ncr_id=n.id) }}"
+                     class="btn btn-sm btn-outline-secondary py-0 px-2">
+                    <i class="bi bi-arrow-right"></i>
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-check-circle fs-2 d-block mb-1 text-success"></i>Aucune NCR ouverte
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Equipment alerts -->
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-tools text-warning me-2"></i>Alertes étalonnage</span>
+        <a href="{{ url_for('labo_equipment', labo_id=labo_id) }}"
+           class="btn btn-sm btn-outline-primary">Voir tout</a>
+      </div>
+      <div class="card-body p-0">
+        {% if equip_list %}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr><th>Équipement</th><th>Prochain étalonnage</th><th>Statut</th></tr>
+            </thead>
+            <tbody>
+              {% for e in equip_list %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('equipment_detail', eid=e.id) }}"
+                     class="text-decoration-none fw-semibold">{{ e.nom }}</a>
+                  <div class="text-muted small">{{ e.code_equipement }}</div>
+                </td>
+                <td class="small">{{ e.prochaine_etalonnage or '—' }}</td>
+                <td><span class="badge badge-cal-{{ e.cal_statut }}">{{ e.cal_statut }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">
+          <i class="bi bi-check-circle fs-2 d-block mb-1 text-success"></i>Étalonnages à jour
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% from 'labo/macros.html' import labo_header %}
+{% block title %}{{ labo_short }} — Échantillons{% endblock %}
+{% block page_title %}{{ labo_short }} · Échantillons{% endblock %}
+
+{% block content %}
+{{ labo_header(labo_id, labo_name, labo_color, 'echantillons') }}
+
+<div class="d-flex justify-content-end mb-3">
+  {% if current_user.perm('register_samples') or current_user.perm('manage_samples') or current_user.perm('all') %}
+  <a href="{{ url_for('labo_echantillons_new', labo_id=labo_id) }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-2"></i>Enregistrer un échantillon
+  </a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-archive me-2"></i>Échantillons — {{ labo_name }} ({{ echantillons|length }})
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>Code</th><th>N° Lot</th><th>Produit</th><th>Fournisseur</th>
+            <th>Date réception</th><th>Statut</th><th>Priorité</th><th>Opérateur</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in echantillons %}
+          <tr>
+            <td><code class="small">{{ e.code_echantillon }}</code></td>
+            <td class="fw-semibold">{{ e.numero_lot }}</td>
+            <td class="small">{{ e.produit_nom or '—' }}</td>
+            <td class="small text-muted">{{ e.fournisseur_nom or '—' }}</td>
+            <td class="small">{{ e.date_reception }}</td>
+            <td>
+              <span class="badge
+                {% if e.statut == 'En attente' %}bg-warning-subtle text-warning
+                {% elif e.statut == 'Analysé' %}bg-success-subtle text-success
+                {% else %}bg-secondary-subtle text-secondary{% endif %}">
+                {{ e.statut }}
+              </span>
+            </td>
+            <td>
+              <span class="badge {{ 'bg-danger' if e.priorite == 'Urgent' else 'bg-secondary' }} bg-opacity-75">
+                {{ e.priorite or 'Normale' }}
+              </span>
+            </td>
+            <td class="small text-muted">{{ e.operateur_nom or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if not echantillons %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-archive fs-1 d-block mb-2"></i>Aucun échantillon pour ce laboratoire
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

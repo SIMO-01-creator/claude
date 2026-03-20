@@ -22,6 +22,12 @@ login_manager.login_view = 'login'
 login_manager.login_message = 'Veuillez vous connecter.'
 login_manager.login_message_category = 'warning'
 
+# ─── Lab metadata ─────────────────────────────────────────────────────────────
+LABO_COLORS = {1: '#b45309', 2: '#1d4ed8', 3: '#15803d', 4: '#6d28d9'}
+LABO_SHORT  = {1: 'Fèves & Nibs', 2: 'Encours & PF',
+               3: 'Microbiologie', 4: 'Dégustation'}
+LABO_ICONS  = {1: 'bi-bag', 2: 'bi-layers', 3: 'bi-bug', 4: 'bi-cup-hot'}
+
 
 # ─── User class ───────────────────────────────────────────────────────────────
 class WebUser(UserMixin):
@@ -70,7 +76,31 @@ def perm_required(permission):
 # ─── Context processor ────────────────────────────────────────────────────────
 @app.context_processor
 def inject_globals():
-    return {'LABOS': LABOS, 'ROLES': ROLES}
+    return {'LABOS': LABOS, 'ROLES': ROLES,
+            'LABO_COLORS': LABO_COLORS, 'LABO_SHORT': LABO_SHORT,
+            'LABO_ICONS': LABO_ICONS}
+
+
+# ─── Lab helpers ──────────────────────────────────────────────────────────────
+def _check_labo(labo_id: int):
+    """Abort 404 if unknown lab, 403 if user has no access."""
+    if labo_id not in LABOS:
+        abort(404)
+    if current_user.perm('all') or current_user.perm('read_all'):
+        return
+    conn = get_connection()
+    row = conn.execute('SELECT 1 FROM user_labos WHERE user_id=? AND labo_id=?',
+                       (int(current_user.id), labo_id)).fetchone()
+    conn.close()
+    if not row:
+        flash('Accès refusé à ce laboratoire.', 'danger')
+        abort(403)
+
+
+def _labo_ctx(labo_id: int) -> dict:
+    return {'labo_id': labo_id, 'labo_name': LABOS[labo_id],
+            'labo_short': LABO_SHORT[labo_id], 'labo_color': LABO_COLORS[labo_id],
+            'labo_icon': LABO_ICONS[labo_id], 'active_labo_id': labo_id}
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -961,6 +991,450 @@ def fournisseurs_new():
     conn.close()
     flash('Fournisseur créé.', 'success')
     return redirect(url_for('fournisseurs_list'))
+
+
+# ═════════════════════════════════════════════════════════════════════════════
+# LABORATOIRES — espaces indépendants par labo
+# ═════════════════════════════════════════════════════════════════════════════
+
+# ── Dashboard labo ────────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/')
+@login_required
+def labo_dashboard(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    kpis = {
+        'echantillons_attente': conn.execute(
+            "SELECT COUNT(*) FROM echantillons WHERE labo_id=? AND statut='En attente'",
+            (labo_id,)).fetchone()[0],
+        'ncr_ouvertes': conn.execute(
+            "SELECT COUNT(*) FROM non_conformites WHERE labo_id=? AND statut='Ouverte'",
+            (labo_id,)).fetchone()[0],
+        'equip_alerte': conn.execute(
+            """SELECT COUNT(*) FROM equipements WHERE labo_id=? AND actif=1
+               AND prochaine_etalonnage IS NOT NULL
+               AND prochaine_etalonnage <= date('now', '+30 days')""",
+            (labo_id,)).fetchone()[0],
+        'resultats_today': conn.execute(
+            """SELECT COUNT(*) FROM resultats r
+               JOIN echantillons e ON r.echantillon_id=e.id
+               WHERE e.labo_id=? AND date(r.date_saisie)=date('now')""",
+            (labo_id,)).fetchone()[0],
+        'competences_alerte': conn.execute(
+            """SELECT COUNT(*) FROM competences_personnel cp
+               JOIN utilisateurs u ON cp.user_id=u.id
+               JOIN user_labos ul ON u.id=ul.user_id
+               WHERE ul.labo_id=? AND cp.statut IN ('Expirée','Alerte')""",
+            (labo_id,)).fetchone()[0],
+    }
+    ncr_list = conn.execute("""
+        SELECT n.id, n.numero_ncr, n.gravite, n.statut, n.date_ouverture,
+               e.code_echantillon, n.description
+        FROM non_conformites n
+        LEFT JOIN echantillons e ON n.echantillon_id=e.id
+        WHERE n.labo_id=? AND n.statut='Ouverte'
+        ORDER BY n.date_ouverture DESC LIMIT 8
+    """, (labo_id,)).fetchall()
+    equip_list = conn.execute("""
+        SELECT e.id, e.nom, e.code_equipement, e.prochaine_etalonnage,
+               CASE WHEN e.prochaine_etalonnage < date('now') THEN 'Dépassé'
+                    ELSE 'Alerte' END as cal_statut
+        FROM equipements e
+        WHERE e.labo_id=? AND e.actif=1 AND e.prochaine_etalonnage IS NOT NULL
+          AND e.prochaine_etalonnage <= date('now', '+30 days')
+        ORDER BY e.prochaine_etalonnage
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/dashboard.html', **_labo_ctx(labo_id),
+                           kpis=kpis, ncr_list=ncr_list, equip_list=equip_list)
+
+
+# ── Échantillons labo ─────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/echantillons')
+@login_required
+def labo_echantillons(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT e.*, p.nom as produit_nom, f.nom as fournisseur_nom,
+               u.nom || ' ' || u.prenom as operateur_nom
+        FROM echantillons e
+        LEFT JOIN produits p ON e.produit_id=p.id
+        LEFT JOIN fournisseurs f ON e.fournisseur_id=f.id
+        LEFT JOIN utilisateurs u ON e.operateur_id=u.id
+        WHERE e.labo_id=? ORDER BY e.date_reception DESC LIMIT 200
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/echantillons.html', **_labo_ctx(labo_id),
+                           echantillons=rows)
+
+
+@app.route('/labo/<int:labo_id>/echantillons/new', methods=['GET', 'POST'])
+@login_required
+def labo_echantillons_new(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('register_samples') or current_user.perm('manage_samples')
+            or current_user.perm('all')):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('labo_echantillons', labo_id=labo_id))
+    conn = get_connection()
+    if request.method == 'POST':
+        f = request.form
+        code = f"ECH-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        conn.execute("""
+            INSERT INTO echantillons (code_echantillon, numero_lot, produit_id,
+                fournisseur_id, labo_id, type_analyse, date_reception,
+                operateur_id, statut, priorite, commentaire, date_creation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'En attente', ?, ?, datetime('now'))
+        """, (code, f.get('numero_lot', ''), f.get('produit_id') or None,
+              f.get('fournisseur_id') or None, labo_id,
+              f.get('type_analyse', ''),
+              f.get('date_reception') or date.today().isoformat(),
+              int(current_user.id), f.get('priorite', 'Normale'),
+              f.get('commentaire', '')))
+        conn.commit()
+        conn.close()
+        flash(f'Échantillon {code} enregistré.', 'success')
+        return redirect(url_for('labo_echantillons', labo_id=labo_id))
+    produits = conn.execute(
+        "SELECT id, code, nom FROM produits WHERE actif=1 AND (labo_id=? OR labo_id IS NULL) ORDER BY nom",
+        (labo_id,)).fetchall()
+    if not produits:
+        produits = conn.execute(
+            "SELECT id, code, nom FROM produits WHERE actif=1 ORDER BY nom").fetchall()
+    fournisseurs = conn.execute(
+        "SELECT id, nom FROM fournisseurs WHERE actif=1 ORDER BY nom").fetchall()
+    conn.close()
+    return render_template('labo/echantillons_form.html', **_labo_ctx(labo_id),
+                           produits=produits, fournisseurs=fournisseurs)
+
+
+# ── Résultats labo ────────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/resultats')
+@login_required
+def labo_resultats(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT r.*, e.code_echantillon, e.numero_lot,
+               u.nom || ' ' || u.prenom as operateur_nom,
+               v.nom || ' ' || v.prenom as validateur_nom
+        FROM resultats r
+        JOIN echantillons e ON r.echantillon_id=e.id
+        LEFT JOIN utilisateurs u ON r.operateur_id=u.id
+        LEFT JOIN utilisateurs v ON r.validateur_id=v.id
+        WHERE e.labo_id=? ORDER BY r.date_saisie DESC LIMIT 200
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/resultats.html', **_labo_ctx(labo_id),
+                           resultats=rows)
+
+
+@app.route('/labo/<int:labo_id>/resultats/new', methods=['GET', 'POST'])
+@login_required
+def labo_resultats_new(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('write_results') or current_user.perm('all')):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('labo_resultats', labo_id=labo_id))
+    conn = get_connection()
+    if request.method == 'POST':
+        f = request.form
+        val_num = f.get('valeur_numerique') or None
+        conforme, ecart = 1, 0
+        if f.get('plan_controle_id') and val_num:
+            plan = conn.execute('SELECT * FROM plan_controle WHERE id=?',
+                                (f['plan_controle_id'],)).fetchone()
+            if plan:
+                v = float(val_num)
+                if (plan['limite_inf'] is not None and v < plan['limite_inf']) or \
+                   (plan['limite_sup'] is not None and v > plan['limite_sup']):
+                    conforme, ecart = 0, 1
+        conn.execute("""
+            INSERT INTO resultats (echantillon_id, plan_controle_id, parametre,
+                valeur_numerique, valeur_texte, unite, conforme, ecart,
+                operateur_id, date_saisie, commentaire, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, 'manuel')
+        """, (int(f['echantillon_id']), f.get('plan_controle_id') or None,
+              f['parametre'], val_num, f.get('valeur_texte', ''),
+              f.get('unite', ''), conforme, ecart, int(current_user.id),
+              f.get('commentaire', '')))
+        conn.commit()
+        conn.close()
+        flash('Résultat enregistré.', 'success')
+        if not conforme:
+            flash('Résultat hors limites — vérifiez les non-conformités.', 'warning')
+        return redirect(url_for('labo_resultats', labo_id=labo_id))
+    echantillons = conn.execute("""
+        SELECT id, code_echantillon, numero_lot FROM echantillons
+        WHERE labo_id=? AND statut='En attente' ORDER BY date_reception DESC LIMIT 100
+    """, (labo_id,)).fetchall()
+    plans = conn.execute("""
+        SELECT pc.id, pc.parametre, pc.unite, p.nom as produit_nom,
+               pc.limite_inf, pc.limite_sup, pc.valeur_cible
+        FROM plan_controle pc JOIN produits p ON pc.produit_id=p.id
+        WHERE pc.labo_id=? AND pc.actif=1 ORDER BY p.nom, pc.parametre
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/resultats_form.html', **_labo_ctx(labo_id),
+                           echantillons=echantillons, plans=plans)
+
+
+@app.route('/labo/<int:labo_id>/resultats/<int:rid>/validate', methods=['POST'])
+@login_required
+def labo_resultats_validate(labo_id, rid):
+    _check_labo(labo_id)
+    if not (current_user.perm('validate_results') or current_user.perm('all')):
+        abort(403)
+    conn = get_connection()
+    conn.execute("""UPDATE resultats SET validateur_id=?, date_validation=datetime('now')
+                    WHERE id=?""", (int(current_user.id), rid))
+    conn.commit()
+    conn.close()
+    flash('Résultat validé.', 'success')
+    return redirect(url_for('labo_resultats', labo_id=labo_id))
+
+
+# ── NCR labo ──────────────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/ncr')
+@login_required
+def labo_ncr(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    ncrs = conn.execute("""
+        SELECT n.*, e.code_echantillon,
+               u.nom || ' ' || u.prenom as ouvert_par_nom
+        FROM non_conformites n
+        LEFT JOIN echantillons e ON n.echantillon_id=e.id
+        LEFT JOIN utilisateurs u ON n.ouvert_par_id=u.id
+        WHERE n.labo_id=? ORDER BY n.date_ouverture DESC
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/ncr.html', **_labo_ctx(labo_id), ncrs=ncrs)
+
+
+@app.route('/labo/<int:labo_id>/ncr/new', methods=['GET', 'POST'])
+@login_required
+def labo_ncr_new(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('open_ncr') or current_user.perm('all')):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('labo_ncr', labo_id=labo_id))
+    conn = get_connection()
+    if request.method == 'POST':
+        f = request.form
+        count = conn.execute("SELECT COUNT(*) FROM non_conformites").fetchone()[0] + 1
+        numero = f"NCR-{date.today().year}-{count:04d}"
+        conn.execute("""
+            INSERT INTO non_conformites (numero_ncr, echantillon_id, labo_id,
+                description, gravite, statut, lot_bloque, ouvert_par_id,
+                date_ouverture)
+            VALUES (?, ?, ?, ?, ?, 'Ouverte', ?, ?, datetime('now'))
+        """, (numero, f.get('echantillon_id') or None, labo_id,
+              f['description'], f['gravite'],
+              1 if f.get('lot_bloque') else 0, int(current_user.id)))
+        conn.commit()
+        ncr_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.close()
+        flash(f'Non-conformité {numero} ouverte.', 'success')
+        return redirect(url_for('ncr_detail', ncr_id=ncr_id))
+    echantillons = conn.execute("""
+        SELECT id, code_echantillon FROM echantillons
+        WHERE labo_id=? ORDER BY date_reception DESC LIMIT 100
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/ncr_form.html', **_labo_ctx(labo_id),
+                           echantillons=echantillons)
+
+
+# ── Équipements labo ──────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/equipment')
+@login_required
+def labo_equipment(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('manage_equipments') or
+            current_user.perm('read_equipments') or current_user.perm('all')):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('labo_dashboard', labo_id=labo_id))
+    conn = get_connection()
+    equip = conn.execute("""
+        SELECT e.*,
+               CASE WHEN e.prochaine_etalonnage < date('now') THEN 'Dépassé'
+                    WHEN e.prochaine_etalonnage <= date('now','+30 days') THEN 'Alerte'
+                    ELSE 'OK' END as cal_statut
+        FROM equipements e
+        WHERE e.labo_id=? AND e.actif=1 ORDER BY e.nom
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/equipment.html', **_labo_ctx(labo_id), equip=equip)
+
+
+@app.route('/labo/<int:labo_id>/equipment/new', methods=['GET', 'POST'])
+@login_required
+def labo_equipment_new(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('manage_equipments') or current_user.perm('all')):
+        abort(403)
+    if request.method == 'POST':
+        f = request.form
+        conn = get_connection()
+        conn.execute("""
+            INSERT INTO equipements (code_equipement, nom, marque, modele,
+                numero_serie, labo_id, date_mise_en_service,
+                prochaine_verification, prochaine_etalonnage, statut, notes, actif)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """, (f['code_equipement'], f['nom'], f.get('marque', ''),
+              f.get('modele', ''), f.get('numero_serie', ''),
+              labo_id, f.get('date_mise_en_service') or None,
+              f.get('prochaine_verification') or None,
+              f.get('prochaine_etalonnage') or None,
+              f.get('statut', 'Opérationnel'), f.get('notes', '')))
+        conn.commit()
+        conn.close()
+        flash('Équipement créé.', 'success')
+        return redirect(url_for('labo_equipment', labo_id=labo_id))
+    return render_template('labo/equipment_form.html', **_labo_ctx(labo_id))
+
+
+# ── Tendances labo ────────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/tendances')
+@login_required
+def labo_tendances(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    plans = conn.execute("""
+        SELECT pc.id, pc.parametre, p.nom as produit_nom
+        FROM plan_controle pc JOIN produits p ON pc.produit_id=p.id
+        WHERE pc.labo_id=? AND pc.actif=1 ORDER BY p.nom, pc.parametre
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/tendances.html', **_labo_ctx(labo_id), plans=plans)
+
+
+@app.route('/labo/<int:labo_id>/tendances/data')
+@login_required
+def labo_tendances_data(labo_id):
+    _check_labo(labo_id)
+    plan_id = request.args.get('plan_id')
+    if not plan_id:
+        return jsonify({'labels': [], 'values': []})
+    conn = get_connection()
+    plan = conn.execute('SELECT * FROM plan_controle WHERE id=? AND labo_id=?',
+                        (plan_id, labo_id)).fetchone()
+    rows = conn.execute("""
+        SELECT date(r.date_saisie) as jour, AVG(r.valeur_numerique) as moy
+        FROM resultats r JOIN echantillons e ON r.echantillon_id=e.id
+        WHERE r.plan_controle_id=? AND e.labo_id=? AND r.valeur_numerique IS NOT NULL
+        GROUP BY jour ORDER BY jour DESC LIMIT 60
+    """, (plan_id, labo_id)).fetchall()
+    conn.close()
+    rows = list(reversed(rows))
+    return jsonify({
+        'labels': [r['jour'] for r in rows],
+        'values': [round(r['moy'], 4) if r['moy'] else None for r in rows],
+        'parametre': plan['parametre'] if plan else '',
+        'unite': plan['unite'] if plan else '',
+        'limit_inf': plan['limite_inf'] if plan else None,
+        'limit_sup': plan['limite_sup'] if plan else None,
+        'alerte_inf': plan['limite_alerte_inf'] if plan else None,
+        'alerte_sup': plan['limite_alerte_sup'] if plan else None,
+        'cible': plan['valeur_cible'] if plan else None,
+    })
+
+
+# ── Onboarding labo ───────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/onboarding')
+@login_required
+def labo_onboarding(labo_id):
+    _check_labo(labo_id)
+    conn = get_connection()
+    formations = conn.execute("""
+        SELECT * FROM formations WHERE actif=1 AND (labo_id=? OR labo_id IS NULL)
+        ORDER BY titre
+    """, (labo_id,)).fetchall()
+    competences = conn.execute("""
+        SELECT cp.*, u.nom || ' ' || u.prenom as personnel_nom,
+               f.titre as formation_titre
+        FROM competences_personnel cp
+        JOIN utilisateurs u ON cp.user_id=u.id
+        JOIN formations f ON cp.formation_id=f.id
+        JOIN user_labos ul ON u.id=ul.user_id
+        WHERE ul.labo_id=?
+        ORDER BY cp.statut DESC, u.nom
+    """, (labo_id,)).fetchall()
+    users = conn.execute("""
+        SELECT DISTINCT u.id, u.nom, u.prenom
+        FROM utilisateurs u JOIN user_labos ul ON u.id=ul.user_id
+        WHERE ul.labo_id=? AND u.actif=1 ORDER BY u.nom
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/onboarding.html', **_labo_ctx(labo_id),
+                           formations=formations, competences=competences, users=users)
+
+
+@app.route('/labo/<int:labo_id>/onboarding/competence/new', methods=['POST'])
+@login_required
+def labo_onboarding_competence(labo_id):
+    _check_labo(labo_id)
+    f = request.form
+    conn = get_connection()
+    formation = conn.execute('SELECT validite_mois FROM formations WHERE id=?',
+                             (f['formation_id'],)).fetchone()
+    date_exp = None
+    if formation and formation['validite_mois'] and f.get('date_formation'):
+        d = datetime.strptime(f['date_formation'], '%Y-%m-%d')
+        date_exp = (d + timedelta(days=30 * int(formation['validite_mois']))).strftime('%Y-%m-%d')
+    conn.execute("""
+        INSERT INTO competences_personnel (user_id, formation_id, date_formation,
+            date_expiration, resultat, score, formateur, statut)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'Valide')
+    """, (int(f['user_id']), int(f['formation_id']), f.get('date_formation'),
+          date_exp, f.get('resultat', 'Réussi'), f.get('score') or None,
+          f.get('formateur', '')))
+    conn.commit()
+    conn.close()
+    flash('Compétence enregistrée.', 'success')
+    return redirect(url_for('labo_onboarding', labo_id=labo_id))
+
+
+# ── Rapports labo ─────────────────────────────────────────────────────────────
+@app.route('/labo/<int:labo_id>/rapports')
+@login_required
+def labo_rapports(labo_id):
+    _check_labo(labo_id)
+    if not (current_user.perm('read_reports') or current_user.perm('download_reports')
+            or current_user.perm('all')):
+        flash('Accès refusé.', 'danger')
+        return redirect(url_for('labo_dashboard', labo_id=labo_id))
+    conn = get_connection()
+    stats = {
+        'total_resultats': conn.execute("""
+            SELECT COUNT(*) FROM resultats r JOIN echantillons e ON r.echantillon_id=e.id
+            WHERE e.labo_id=?""", (labo_id,)).fetchone()[0],
+        'total_nc': conn.execute("""
+            SELECT COUNT(*) FROM resultats r JOIN echantillons e ON r.echantillon_id=e.id
+            WHERE e.labo_id=? AND r.conforme=0""", (labo_id,)).fetchone()[0],
+        'total_ncr': conn.execute(
+            "SELECT COUNT(*) FROM non_conformites WHERE labo_id=?",
+            (labo_id,)).fetchone()[0],
+        'ncr_ouvertes': conn.execute(
+            "SELECT COUNT(*) FROM non_conformites WHERE labo_id=? AND statut='Ouverte'",
+            (labo_id,)).fetchone()[0],
+    }
+    ncr_by_gravite = conn.execute("""
+        SELECT gravite, COUNT(*) as count FROM non_conformites
+        WHERE labo_id=? GROUP BY gravite
+    """, (labo_id,)).fetchall()
+    recent_resultats = conn.execute("""
+        SELECT r.parametre, r.valeur_numerique, r.unite, r.conforme,
+               r.date_saisie, e.code_echantillon, e.numero_lot
+        FROM resultats r JOIN echantillons e ON r.echantillon_id=e.id
+        WHERE e.labo_id=? ORDER BY r.date_saisie DESC LIMIT 20
+    """, (labo_id,)).fetchall()
+    conn.close()
+    return render_template('labo/rapports.html', **_labo_ctx(labo_id),
+                           stats=stats, ncr_by_gravite=ncr_by_gravite,
+                           recent_resultats=recent_resultats)
 
 
 # ═════════════════════════════════════════════════════════════════════════════

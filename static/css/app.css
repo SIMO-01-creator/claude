@@ -291,6 +291,75 @@ body {
   }
 }
 
+/* ── Lab sub-nav ──────────────────────────────────────────── */
+#sidebar .nav-sub {
+  padding-left: 2.5rem;
+  font-size: 0.82rem;
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+#sidebar .lab-toggle {
+  cursor: pointer;
+}
+
+#sidebar .lab-toggle:hover .chevron-icon {
+  opacity: 1;
+}
+
+#sidebar .chevron-icon {
+  opacity: 0.5;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+}
+
+/* Lab page header */
+.labo-header-bar {
+  border-radius: 0.625rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.labo-header-bar .labo-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+}
+
+.labo-header-bar .labo-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.labo-tab {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  color: rgba(255,255,255,0.8);
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.labo-tab:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.labo-tab.active {
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+  border-color: rgba(255,255,255,0.5);
+  font-weight: 600;
+}
+
 /* ── Sidebar toggle button (mobile) ──────────────────────── */
 .sidebar-toggle {
   display: none;

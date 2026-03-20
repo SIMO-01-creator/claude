@@ -9,7 +9,7 @@ import os
 from datetime import datetime, date
 from pathlib import Path
 
-DB_PATH = Path.home() / "labo_cq_data" / "labo_cq.db"
+DB_PATH = Path(os.environ.get('DB_PATH', str(Path.home() / "labo_cq_data" / "labo_cq.db")))
 
 LABOS = {
     1: "Labo PC Fèves & Nibs",

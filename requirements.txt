@@ -4,6 +4,7 @@
 # Web framework
 Flask>=3.0.0
 Flask-Login>=0.6.3
+gunicorn>=21.2.0
 
 # Base de données (inclus dans Python standard)
 # sqlite3 est inclus dans Python
